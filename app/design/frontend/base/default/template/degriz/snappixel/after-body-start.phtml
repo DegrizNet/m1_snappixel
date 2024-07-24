@@ -1,0 +1,120 @@
+<?php
+$store_id = Mage::app()->getStore()->getId();
+if(Mage::helper('degriz_snappixel')->getPixelActive($store_id) == 1 ):
+?>
+
+    <!-- Snap Pixel Code -->
+    <script>
+		(function(e,t,n){if(e.snaptr)return;var a=e.snaptr=function()
+		{a.handleRequest?a.handleRequest.apply(a,arguments):a.queue.push(arguments)};
+		a.queue=[];var s='script';r=t.createElement(s);r.async=!0;
+		r.src=n;var u=t.getElementsByTagName(s)[0];
+		u.parentNode.insertBefore(r,u);})(window,document,
+		'https://sc-static.net/scevent.min.js');
+
+        snaptr('init', '<?php echo Mage::helper('degriz_snappixel')->getPixelId() ?>', {
+<?php if (Mage::app()->getFrontController()->getAction()->getFullActionName()== 'checkout_onepage_success') {
+				$orderId = Mage::getSingleton('checkout/session')->getLastOrderId();
+				$order = Mage::getModel('sales/order')->load($orderId);
+?>
+			<?php if($email = $order->getCustomerEmail()) { ?>'user_email' : '<?php echo $email ?>',<?php } ?>
+			<?php if($phone = $order->getBillingAddress()->getTelephone()) { ?>'user_phone_number' : '<?php echo $phone ?>',<?php } ?>
+<?php } ?>
+		});
+        snaptr('track', "PAGE_VIEW");
+
+        <?php
+
+            $request = $this->getRequest();
+            $module = $request->getModuleName();
+            $controller = $request->getControllerName();
+            $action = $request->getActionName();
+
+            $pageIdentifier = Mage::app()->getFrontController()->getAction()->getFullActionName();
+
+            
+            // Lead
+            if(Mage::registry('current_product')) {
+                $product = Mage::registry('current_product');
+				$product_id = $product->getSku();
+				$_category_detail = Mage::registry('current_category');
+				if($_category_detail) {
+					$product_cat = $_category_detail->getName(); 
+				} else {
+					$product_cat = '';
+				}
+				$product_name = $product->getName();
+				$product_price = $product->getFinalprice();
+				$product_price = Mage::helper('core')->currency($product_price,false,false);
+?>
+			snaptr('track', 'VIEW_CONTENT', { 
+				content_type: 'product',
+				item_ids: ['<?php echo $product_id ?>'],    
+				description: '<?php echo $product_name ?>',
+				item_category: '<?php echo $product_cat ?>',
+				price: <?php echo $product_price ?>,
+				currency: '<?php echo Mage::app()->getStore()->getCurrentCurrencyCode();?>'
+			});
+            <?php }
+
+            // Search
+            if($controller == 'result' || $controller =='advanced') {
+                echo "snaptr('track', 'SEARCH');";
+            }
+
+            // Customer registration
+            if($module == 'customer' && $controller == 'account' && $action == 'index'){
+                echo "snaptr('track', 'LOGIN')";
+            }
+             
+            // Cart 
+            if(($module == 'checkout' && $controller == 'onestep' && $action == 'index') or ($module == 'checkout' && $controller == 'cart' && $action == 'index') or ($module == 'onestepcheckout' && $controller == 'index' && $action == 'index')) { 
+				$quote = Mage::getSingleton('checkout/cart')->getQuote();
+				$productIds = "";
+				if($controller == 'onestep') { $track = 'START_CHECKOUT'; } else { $track = 'ADD_CART'; }
+				foreach($quote->getAllItems() as $item):
+					if($item->getParentItemId()) continue;
+					if (strlen($productIds)==0){
+						$productIds = "'".$item->getSku()."'";
+					}
+					else{
+						$productIds = $productIds.",'".$item->getSku()."'";
+					}
+			endforeach; ?>
+
+			snaptr('track', '<?php echo $track ?>', {
+				 description: 'Shopping Cart',
+				 item_ids: [<?php echo $productIds?>],
+				 price: <?php echo number_format($quote->getGrandTotal(),2,'.','');?>,
+				 currency: '<?php echo Mage::app()->getStore()->getCurrentCurrencyCode();?>'
+			});
+            <?php  }
+             // Add to wishlist
+             if($module == 'wishlist') {
+                 echo "snaptr('track', 'ADD_TO_WISHLIST');";
+             }
+             // Checkout success
+			 if (Mage::app()->getFrontController()->getAction()->getFullActionName()== 'checkout_onepage_success') {
+				$orderId = Mage::getSingleton('checkout/session')->getLastOrderId();
+				$order = Mage::getModel('sales/order')->load($orderId);
+				$productIds = "";
+				foreach($order->getAllItems() as $item):
+					if($item->getParentItemId()) continue;
+					if (strlen($productIds)==0){
+						$productIds = "'".$item->getSku()."'";
+					}
+					else{
+						$productIds = $productIds.",'".$item->getSku()."'";
+					}
+			endforeach; ?>
+
+			snaptr('track', 'PURCHASE', {
+					 price: <?php echo number_format($order->getGrandTotal(),2,'.','');?>,
+					 currency: '<?php echo Mage::app()->getStore()->getCurrentCurrencyCode();?>',
+					 transaction_id: '<?php echo $order->getData('increment_id'); ?>',
+					 item_ids: [<?php echo preg_replace('/\s+/', '', $productIds) ?>],
+				});
+		<?php }  ?>
+    </script>
+    <!-- End Snap Pixel Code -->
+<?php endif ?>

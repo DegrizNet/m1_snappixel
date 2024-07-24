@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<layout>
+    <default>
+        <reference name="after_body_start">
+            <block type="core/template" name="degriz_snappixel_pixel"  template="degriz/snappixel/after-body-start.phtml"/>
+        </reference>
+    </default>
+</layout>
+
+
